@@ -7,7 +7,7 @@ import re
 UDP_IP = '0.0.0.0'
 UDP_PORT = 10053
 
-# message should be base64 encoded
+# message should be hex encoded
 def parse_query(message):
 	m = {}
 	# Example hex values for www.google.edu nslookup
@@ -36,6 +36,43 @@ def parse_query(message):
 			break
 	return m
 
+# Returns binary response
+def gen_response(request):
+	response=''
+	response += request['id']
+	response_flags = '8180'
+	response += response_flags
+	response += request['qdcount']
+	response_ancount = '0001'
+	response += response_ancount
+	response += request['nscount']
+	response += request['arcount']
+
+	# Re-encode domains and add to response
+	domains = request['domains']
+	for domain in domains:
+		dlen = str(hex(len(domain) * 2))[2:]
+		response += dlen
+		d = binascii.hexlify(domain)
+		#print "Domain:", d
+		response += d
+
+	response_ispointer = 'c'
+	response += response_ispointer
+	response_nameoffset = '00c'
+	response += response_nameoffset
+	response_type = '0001' # 0001 = Type A query (Host address)
+	response += response_type
+	response_class = '0001' # 0001 = Class IN (Internet address)
+	response += response_class
+	response_ttl = '00000020' # 20 = 32 decimal seconds.
+	response += response_ttl
+	address_length = '0004'
+	response += address_length
+	ip = "1.2.3.4"
+	response += binascii.b2a_hex(str.join('',map(lambda x: chr(int(x)), ip.split('.'))))
+	return response
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
 sock.bind((UDP_IP, UDP_PORT))
 sock2 = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_UDP)
@@ -55,4 +92,10 @@ while True:
 			msg = parse_query(message)
 			print "Message from:", ip, port
 			print "Domains:", ".".join(msg['domains'])
+			print "ID:", msg['id']
+
+			response = gen_response(msg)
+			print response, type(response), len(response)
+			print binascii.a2b_hex(response)
+			i.sendto(gen_response(msg), (ip, port))
 
