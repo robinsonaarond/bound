@@ -4,9 +4,6 @@ import socket,select
 import binascii
 import re
 
-UDP_IP = '0.0.0.0'
-UDP_PORT = 10053
-
 # message should be hex encoded
 def parse_query(message):
 	m = {}
@@ -37,7 +34,9 @@ def parse_query(message):
 	return m
 
 # Returns binary response
-def gen_response(request):
+def gen_response(request,serverip):
+	# Example hex values for www.google.edu response w/ 1.2.5.33 for ip address
+	# ab5a818000010001000000000377777706676f6f676c65036564750000010001c00c0001000100000020000401020521
 	response=''
 	response += request['id']
 	response_flags = '8180'
@@ -56,6 +55,7 @@ def gen_response(request):
 		d = binascii.hexlify(domain)
 		#print "Domain:", d
 		response += d
+	response += '0000010001' # End of the original query, probably ;)
 
 	response_ispointer = 'c'
 	response += response_ispointer
@@ -69,9 +69,14 @@ def gen_response(request):
 	response += response_ttl
 	address_length = '0004'
 	response += address_length
-	ip = "1.2.3.4"
-	response += binascii.b2a_hex(str.join('',map(lambda x: chr(int(x)), ip.split('.'))))
+	response += binascii.b2a_hex(str.join('',map(lambda x: chr(int(x)), serverip.split('.'))))
 	return response
+
+def get_serverip(url):
+	return "1.2.3.4"
+
+UDP_IP = '0.0.0.0'
+UDP_PORT = 10053
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
 sock.bind((UDP_IP, UDP_PORT))
@@ -89,13 +94,14 @@ while True:
 		port = packet[1][1]
 
 		if port is not 0: # All those broadcast messages from Bonjour! ;)
+			# Get requested domain
 			msg = parse_query(message)
-			print "Message from:", ip, port
-			print "Domains:", ".".join(msg['domains'])
-			print "ID:", msg['id']
+			url = ".".join(msg['domains'])
+			print "Request:", ip, port, url
 
-			response = gen_response(msg)
-			print response, type(response), len(response)
-			print binascii.a2b_hex(response)
-			i.sendto(gen_response(msg), (ip, port))
+			# Get IP Address for given domain
+			serverip = get_serverip(url)
 
+			# Respond with IP Address for requested domain
+			print "Answer:", serverip, url
+			i.sendto(binascii.a2b_hex(gen_response(msg,serverip)), (ip, port))
