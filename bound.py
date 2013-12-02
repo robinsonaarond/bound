@@ -40,7 +40,10 @@ def gen_response(request,serverip):
 	# ab5a818000010001000000000377777706676f6f676c65036564750000010001c00c0001000100000020000401020521
 	response=''
 	response += request['id']
-	response_flags = '8180'
+	if serverip == "0.0.0.0":
+		response_flags = '8183' # Not found
+	else:
+		response_flags = '8180' # Normal Reponse
 	response += response_flags
 	response += request['qdcount']
 	response_ancount = '0001'
@@ -78,8 +81,8 @@ def get_serverip(url):
 	cur = conn.cursor()
 	cur.execute('CREATE TABLE IF NOT EXISTS A ( URL TEXT PRIMARY KEY NOT NULL, IP text NOT NULL )')
 	try:
-		cur.execute('SELECT IP FROM A WHERE URL = %s' % url)
-		data = cur.fetchone()
+		cur.execute('SELECT IP FROM A WHERE URL = "'+url+'"')
+		data = cur.fetchone()[0]
 	except:
 		data = "0.0.0.0"
 	return data
