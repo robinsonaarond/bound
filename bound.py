@@ -51,7 +51,7 @@ def gen_response(request):
 	# Re-encode domains and add to response
 	domains = request['domains']
 	for domain in domains:
-		dlen = str(hex(len(domain) * 2))[2:]
+		dlen = str(hex(len(domain))[2:]).zfill(2)
 		response += dlen
 		d = binascii.hexlify(domain)
 		#print "Domain:", d
