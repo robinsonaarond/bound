@@ -3,6 +3,7 @@
 import socket,select
 import binascii
 import re
+import sqlite3
 
 # message should be hex encoded
 def parse_query(message):
@@ -73,7 +74,15 @@ def gen_response(request,serverip):
 	return response
 
 def get_serverip(url):
-	return "1.2.3.4"
+	conn = sqlite3.connect(r"bound.db")
+	cur = conn.cursor()
+	cur.execute('CREATE TABLE IF NOT EXISTS A ( URL TEXT PRIMARY KEY NOT NULL, IP text NOT NULL )')
+	try:
+		cur.execute('SELECT IP FROM A WHERE URL = %s' % url)
+		data = cur.fetchone()
+	except:
+		data = "0.0.0.0"
+	return data
 
 UDP_IP = '0.0.0.0'
 UDP_PORT = 10053
