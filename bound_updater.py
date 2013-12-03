@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import pyjsonrpc
+import sys
 
 http_client = pyjsonrpc.HttpClient(
 	url = "http://localhost:8080"
@@ -11,5 +12,5 @@ http_client = pyjsonrpc.HttpClient(
 # Result: 3
 
 # It is also possible to use the *method* name as *attribute* name.
-http_client.update("www.mytest.com", "5.6.7.8")
+http_client.update(sys.argv[1], sys.argv[2])
 # Result: 3

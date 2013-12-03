@@ -5,6 +5,7 @@ import binascii
 import re
 import sqlite3
 import pyjsonrpc
+import time
 
 # message should be hex encoded
 def parse_query(message):
@@ -86,27 +87,27 @@ def get_serverip(url):
 		data = cur.fetchone()[0]
 	except:
 		data = "0.0.0.0"
+	conn.commit()
 	return data
 
-def update_domain(url, ip):
-	print url, ip
-	return "URL was: %s, IP was: %s" % (url, ip)
-
-class RequestHandler(pyjsonrpc.HttpRequestHandler):
-	# Register public JSON-RPC methods
-	methods = {
-		"update": update_domain
-	}
-
-# Threading HTTP-Server
-http_server = pyjsonrpc.ThreadingHttpServer(
-	server_address = ('localhost', 8080),
-	RequestHandlerClass = RequestHandler
-	)
-print "Starting HTTP server ..."
-print "URL: http://localhost:8080"
+#def update_domain(url, ip):
+#	print url, ip
+#	return "URL was: %s, IP was: %s" % (url, ip)
+#
+#class RequestHandler(pyjsonrpc.HttpRequestHandler):
+#	# Register public JSON-RPC methods
+#	methods = {
+#		"update": update_domain
+#	}
+#
+## Threading HTTP-Server
+#http_server = pyjsonrpc.ThreadingHttpServer(
+#	server_address = ('localhost', 8080),
+#	RequestHandlerClass = RequestHandler
+#	)
+#print "Starting HTTP server ..."
+#print "URL: http://localhost:8080"
 #http_server.serve_forever()
-http_server.serve_forever()
 
 UDP_IP = '0.0.0.0'
 UDP_PORT = 53
@@ -119,9 +120,13 @@ sock2.bind((UDP_IP, UDP_PORT))
 print "Listening on port %s..." % UDP_PORT
 
 while True:
-    r, w, x = select.select([sock, sock2], [], [])
-    for i in r:
-		packet = i.recvfrom(1024)
+	#print "Got it.", time.time()
+	r, w, x = select.select([sock, sock2], [], [], 0.01)
+	#print "Waiting...", time.time()
+	#time.sleep(0.01)
+	for i in r:
+		#print "Got a packet!"
+		packet = i.recvfrom(128)
 		message = binascii.b2a_hex(packet[0])
 		ip = packet[1][0]
 		port = packet[1][1]
