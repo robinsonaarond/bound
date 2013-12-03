@@ -4,6 +4,7 @@ import socket,select
 import binascii
 import re
 import sqlite3
+import pyjsonrpc
 
 # message should be hex encoded
 def parse_query(message):
@@ -86,6 +87,26 @@ def get_serverip(url):
 	except:
 		data = "0.0.0.0"
 	return data
+
+def update_domain(url, ip):
+	print url, ip
+	return "URL was: %s, IP was: %s" % (url, ip)
+
+class RequestHandler(pyjsonrpc.HttpRequestHandler):
+	# Register public JSON-RPC methods
+	methods = {
+		"update": update_domain
+	}
+
+# Threading HTTP-Server
+http_server = pyjsonrpc.ThreadingHttpServer(
+	server_address = ('localhost', 8080),
+	RequestHandlerClass = RequestHandler
+	)
+print "Starting HTTP server ..."
+print "URL: http://localhost:8080"
+#http_server.serve_forever()
+http_server.serve_forever()
 
 UDP_IP = '0.0.0.0'
 UDP_PORT = 53
