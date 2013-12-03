@@ -88,7 +88,7 @@ def get_serverip(url):
 	return data
 
 UDP_IP = '0.0.0.0'
-UDP_PORT = 10053
+UDP_PORT = 53
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
 sock.bind((UDP_IP, UDP_PORT))
