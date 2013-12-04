@@ -86,7 +86,17 @@ def get_serverip(url):
 		cur.execute('SELECT IP FROM A WHERE URL = "'+url+'"')
 		data = cur.fetchone()[0]
 	except:
-		data = "0.0.0.0"
+		# Try looking it up manually
+		try:
+			## Code from stackoverflow
+			#import dns.resolver # don't have this
+			#my_resolver = dns.resolver.Resolver()
+			## 8.8.8.8 is Google's openDNS server
+			#my_resolver.nameservers = ['8.8.8.8']
+			#answer = my_resolver.query('google.com')
+			data = socket.gethostbyname(url)
+		except:
+			data = "0.0.0.0"
 	conn.commit()
 	return data
 
