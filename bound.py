@@ -7,6 +7,7 @@ import sqlite3
 import pyjsonrpc
 import time
 import dns.resolver
+import sys
 
 # message should be hex encoded
 def parse_query(message):
@@ -33,6 +34,18 @@ def parse_query(message):
 			m['domains'] = domains
 			# Done going through domains segments, now get final bits
 			# QueryType [0001], DataClass [0001]
+			# Common QueryTypes:
+			# 0001 A (Normal query)
+			# 0002 NS
+			# 0005 CNAME
+			# 0006 SOA
+			# 000c PTR
+			# 0010 TXT
+			# 001c AAAA
+			# 0026 A6
+			# 00fb IXFR
+			# 00fc AXFR
+			# 00ff wildcard
 			m['querytype'], m['dataclass'] = re.findall('....', msg_contents[i+2:])
 			break
 	return m
@@ -80,6 +93,7 @@ def gen_response(request,serverip):
 	return response
 
 def get_serverip(url):
+	print "Getting IP for", url
 	conn = sqlite3.connect(r"bound.db")
 	cur = conn.cursor()
 	cur.execute('CREATE TABLE IF NOT EXISTS A ( URL TEXT PRIMARY KEY NOT NULL, IP text NOT NULL )')
@@ -94,10 +108,12 @@ def get_serverip(url):
 			# pip install dnspython
 			my_resolver = dns.resolver.Resolver()
 			# 8.8.8.8 is Google's openDNS server
-			my_resolver.nameservers = ['8.8.8.8']
-			data = str(my_resolver.query(url, 'A')[0])
+			my_resolver.nameservers = ['192.168.16.31']
+			resolved = my_resolver.query(url, 'A')
+			data = str(resolved[0])
 			#data = socket.gethostbyname(url)
 		except Exception, e:
+			print "Error:", e
 			data = "0.0.0.0"
 	conn.commit()
 	return data
@@ -130,6 +146,7 @@ sock2 = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_UDP)
 sock2.bind((UDP_IP, UDP_PORT))
 
 print "Listening on port %s..." % UDP_PORT
+sys.stdout.flush()
 
 while True:
 	#print "Got it.", time.time()
@@ -148,10 +165,13 @@ while True:
 			msg = parse_query(message)
 			url = ".".join(msg['domains'])
 			print "Request:", ip, port, url
+			sys.stdout.flush()
+			print "Message:", message
 
 			# Get IP Address for given domain
 			serverip = get_serverip(url)
 
 			# Respond with IP Address for requested domain
 			print "Answer:", serverip, url
+			sys.stdout.flush()
 			i.sendto(binascii.a2b_hex(gen_response(msg,serverip)), (ip, port))
