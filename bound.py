@@ -92,50 +92,55 @@ def gen_response(request,serverip):
 	response += binascii.b2a_hex(str.join('',map(lambda x: chr(int(x)), serverip.split('.'))))
 	return response
 
-def get_serverip(url):
+def get_serverip(url,msg):
 	print "Getting IP for", url
 	conn = sqlite3.connect(r"bound.db")
 	cur = conn.cursor()
 	cur.execute('CREATE TABLE IF NOT EXISTS A ( URL TEXT PRIMARY KEY NOT NULL, IP text NOT NULL )')
-	try:
-		cur.execute('SELECT IP FROM A WHERE URL = "'+url+'"')
-		data = cur.fetchone()[0]
-	except:
-		# Try looking it up manually
+	if msg['querytype'] == '0001':
 		try:
-			## Code from stackoverflow
-			# import dns.resolver 
-			# pip install dnspython
-			my_resolver = dns.resolver.Resolver()
-			# 8.8.8.8 is Google's openDNS server
-			my_resolver.nameservers = ['192.168.16.31']
-			resolved = my_resolver.query(url, 'A')
-			data = str(resolved[0])
-			#data = socket.gethostbyname(url)
-		except Exception, e:
-			print "Error:", e
-			data = "0.0.0.0"
+			cur.execute('SELECT IP FROM A WHERE URL = "'+url+'"')
+			data = cur.fetchone()[0]
+		except:
+			# Try looking it up manually
+			try:
+				## Code from stackoverflow
+				# import dns.resolver 
+				# pip install dnspython
+				my_resolver = dns.resolver.Resolver()
+				# 8.8.8.8 is Google's openDNS server
+				my_resolver.nameservers = ['192.168.16.31']
+				resolved = my_resolver.query(url, 'A')
+				data = str(resolved[0])
+				#data = socket.gethostbyname(url)
+			except Exception, e:
+				print "Error:", e
+				data = "0.0.0.0"
+	elif msg['querytype'] == '000c':
+		# Example reverse DNS: 4.3.2.1-in-addr.arpa: type PTR, class IN
+		print "Got a RDNS Query"
+		ipaddr = ".".join(msg['domains'][:4][::-1])
+		try:
+			cur.execute('SELECT URL FROM A WHERE IP = "'+ipaddr+'"')
+			data = cur.fetchone()[0]
+		except:
+			# Try looking it up manually
+			try:
+				## Code from stackoverflow
+				# import dns.resolver 
+				# pip install dnspython
+				my_resolver = dns.resolver.Resolver()
+				# 8.8.8.8 is Google's openDNS server
+				my_resolver.nameservers = ['192.168.16.31']
+				resolved = my_resolver.query(url, 'A')
+				data = str(resolved[0])
+				data = socket.gethostbyname(url)
+			except Exception, e:
+				print "rDNS Error:", e
+				data = "0.0.0.0"
+		data = "hmm.unknown.com"
 	conn.commit()
 	return data
-
-#def update_domain(url, ip):
-#	print url, ip
-#	return "URL was: %s, IP was: %s" % (url, ip)
-#
-#class RequestHandler(pyjsonrpc.HttpRequestHandler):
-#	# Register public JSON-RPC methods
-#	methods = {
-#		"update": update_domain
-#	}
-#
-## Threading HTTP-Server
-#http_server = pyjsonrpc.ThreadingHttpServer(
-#	server_address = ('localhost', 8080),
-#	RequestHandlerClass = RequestHandler
-#	)
-#print "Starting HTTP server ..."
-#print "URL: http://localhost:8080"
-#http_server.serve_forever()
 
 UDP_IP = '0.0.0.0'
 UDP_PORT = 53
@@ -169,7 +174,7 @@ while True:
 			print "Message:", message
 
 			# Get IP Address for given domain
-			serverip = get_serverip(url)
+			serverip = get_serverip(url,msg)
 
 			# Respond with IP Address for requested domain
 			print "Answer:", serverip, url
