@@ -58,6 +58,8 @@ def gen_response(request,serverip):
 	response += request['id']
 	if serverip == "0.0.0.0":
 		response_flags = '8183' # Not found
+	elif "in-addr" in serverip:	
+		print "IP is actually the rDNS response"
 	else:
 		response_flags = '8180' # Normal Reponse
 	response += response_flags
@@ -93,6 +95,7 @@ def gen_response(request,serverip):
 	return response
 
 def get_serverip(url,msg):
+	data = "0.0.0.0"
 	print "Getting IP for", url
 	conn = sqlite3.connect(r"bound.db")
 	cur = conn.cursor()
@@ -118,12 +121,13 @@ def get_serverip(url,msg):
 				data = "0.0.0.0"
 	elif msg['querytype'] == '000c':
 		# Example reverse DNS: 4.3.2.1-in-addr.arpa: type PTR, class IN
-		print "Got a RDNS Query"
 		ipaddr = ".".join(msg['domains'][:4][::-1])
+		print "Got an RDNS Query for", ipaddr
 		try:
 			cur.execute('SELECT URL FROM A WHERE IP = "'+ipaddr+'"')
 			data = cur.fetchone()[0]
 		except:
+			print "IP Addr not found in A"
 			# Try looking it up manually
 			try:
 				## Code from stackoverflow
@@ -138,8 +142,9 @@ def get_serverip(url,msg):
 			except Exception, e:
 				print "rDNS Error:", e
 				data = "0.0.0.0"
-		data = "hmm.unknown.com"
+		#data = "0.0.0.0"
 	conn.commit()
+	print "Data came out to:", data
 	return data
 
 UDP_IP = '0.0.0.0'
