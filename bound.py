@@ -46,7 +46,13 @@ def parse_query(message):
 			# 00fb IXFR
 			# 00fc AXFR
 			# 00ff wildcard
-			m['querytype'], m['dataclass'] = re.findall('....', msg_contents[i+2:])
+			i += 2
+			m['querytype'] = msg_contents[i:i+4]
+			i += 4
+			m['dataclass'] = msg_contents[i:i+4]
+			# Running 'dig' also added a bunch more stuff at the end.  Here's an example:
+			# 0000291000000000000000
+			# Ignoring until I think/know I need it.
 			break
 	return m
 
