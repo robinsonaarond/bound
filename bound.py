@@ -7,7 +7,23 @@ import sqlite3
 import pyjsonrpc
 import time
 import dns.resolver
+import dns.reversename
 import sys
+
+# Utility function(s)
+def is_ipv4(ip):
+	match = re.match("^(\d{0,3})\.(\d{0,3})\.(\d{0,3})\.(\d{0,3})$", ip)
+	if not match:
+		return False
+	quad = []
+	for number in match.groups():
+		quad.append(int(number))
+	if quad[0] < 1:
+		return False
+	for number in quad:
+		if number > 255 or number < 0:
+			return False
+	return True
 
 # message should be hex encoded
 def parse_query(message):
@@ -97,7 +113,13 @@ def gen_response(request,serverip):
 	response += response_ttl
 	address_length = '0004'
 	response += address_length
-	response += binascii.b2a_hex(str.join('',map(lambda x: chr(int(x)), serverip.split('.'))))
+	if is_ipv4(serverip):
+		response += binascii.b2a_hex(str.join('',map(lambda x: chr(int(x)), serverip.split('.'))))
+	else:
+		servername = serverip.split('.')
+		for servlet in servername:
+			response += binascii.hexlify(str(hex(len(servlet))[2:]).zfill(2))
+			response += binascii.hexlify(servlet)
 	return response
 
 def get_serverip(url,msg):
@@ -136,15 +158,8 @@ def get_serverip(url,msg):
 			print "IP Addr not found in A"
 			# Try looking it up manually
 			try:
-				## Code from stackoverflow
-				# import dns.resolver 
-				# pip install dnspython
-				my_resolver = dns.resolver.Resolver()
-				# 8.8.8.8 is Google's openDNS server
-				my_resolver.nameservers = ['192.168.16.31']
-				resolved = my_resolver.query(url, 'A')
-				data = str(resolved[0])
-				data = socket.gethostbyname(url)
+				addr = dns.reversename.from_address(ipaddr)
+				data = str(dns.resolver.query(addr, 'PTR')[0])
 			except Exception, e:
 				print "rDNS Error:", e
 				data = "0.0.0.0"
